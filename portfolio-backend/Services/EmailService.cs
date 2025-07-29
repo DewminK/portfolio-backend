@@ -1,40 +1,38 @@
-﻿// Services/EmailService.cs
-using System.Net;
+﻿using System.Net;
 using System.Net.Mail;
-using Microsoft.Extensions.Configuration;
-using portfolio_backend.Services;
+using Microsoft.Extensions.Options;
+using portfolio_backend.Class;
 
-public class EmailService : IEmailService
+namespace portfolio_backend.Services
 {
-    private readonly IConfiguration _config;
-
-    public EmailService(IConfiguration config)
+    public class EmailService : IEmailService
     {
-        _config = config;
-    }
+        private readonly EmailSettings _emailSettings;
 
-    public async Task SendEmailAsync(string name, string fromEmail, string message)
-    {
-        var smtpClient = new SmtpClient("smtp.gmail.com")
+        public EmailService(IOptions<EmailSettings> emailSettings)
         {
-            Port = 587,
-            Credentials = new NetworkCredential(
-                _config["EmailSettings:Username"],
-                _config["EmailSettings:Password"]
-            ),
-            EnableSsl = true,
-        };
+            _emailSettings = emailSettings.Value;
+        }
 
-        var mailMessage = new MailMessage
+        public async Task SendEmailAsync(string name, string email, string message)
         {
-            From = new MailAddress(_config["EmailSettings:Username"]),
-            Subject = "New Contact Form Submission",
-            Body = $"Name: {name}\nEmail: {fromEmail}\nMessage:\n{message}",
-            IsBodyHtml = false,
-        };
+            using var smtp = new SmtpClient("smtp.gmail.com", 587)
+            {
+                EnableSsl = true,
+                Credentials = new NetworkCredential(_emailSettings.Username, _emailSettings.Password)
+            };
 
-        mailMessage.To.Add("dewminkasmitha30@gmail.com");
+            var mail = new MailMessage
+            {
+                From = new MailAddress(_emailSettings.Username),
+                Subject = "New Contact Form Submission",
+                Body = $"Name: {name}\nEmail: {email}\nMessage:\n{message}",
+                IsBodyHtml = false
+            };
 
-        await smtpClient.SendMailAsync(mailMessage);
+            mail.To.Add("dewminkasmitha30@gmail.com");
+
+            await smtp.SendMailAsync(mail);
+        }
     }
 }
